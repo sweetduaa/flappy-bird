@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flappy Bird Arcade: Level Challenge</title>
+    <!-- FontAwesome icons for retro UI accents -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --arcade-gold: #fbc02d;
+            --arcade-orange: #f57c00;
+            --arcade-green: #43a047;
+            --arcade-red: #e53935;
+            --arcade-dark: #121824;
+            --arcade-panel: #1e2738;
+            --arcade-border: #37474f;
+            --arcade-font: 'Arial Rounded MT Bold', 'Fredoka', 'Segoe UI', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b0f19;
+            font-family: var(--arcade-font);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #ffffff;
+        }
+
+        #game-wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 420px;
+            max-height: 680px;
+            background: var(--arcade-dark);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(251, 192, 45, 0.15);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-radius: 16px;
+            border: 4px solid #283142;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background-color: #70c5ce;
+            image-rendering: pixelated;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 16px;
+            z-index: 10;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, rgba(15, 23, 42, 0.98) 100%);
+            backdrop-filter: blur(8px);
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+
+        .overlay::-webkit-scrollbar {
+            width: 4px;
+        }
+        .overlay::-webkit-scrollbar-thumb {
+            background: var(--arcade-gold);
+            border-radius: 4px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Header Branding */
+        .header-brand {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        .mascot-container {
+            width: 54px;
+            height: 54px;
+            margin-bottom: 6px;
+            animation: floatMascot 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes floatMascot {
+            0% { transform: translateY(0px) rotate(-3deg); }
+            100% { transform: translateY(-10px) rotate(3deg); }
+        }
+
+        .game-title {
+            font-size: clamp(24px, 7vw, 32px);
+            font-weight: 900;
+            letter-spacing: 1.5px;
+            color: #ffee55;
+            text-shadow: 
+                3px 3px 0px #b71c1c,
+                -2px -2px 0px #000,
+                2px -2px 0px #000,
+                -2px 2px 0px #000,
+                0px 4px 8px rgba(0,0,0,0.6);
+            text-align: center;
+            line-height: 1.1;
+            text-transform: uppercase;
+        }
+
+        .badge-tag {
+            background: linear-gradient(90deg, #ff9800, #f57c00);
+            color: #fff;
+            font-size: 11px;
+            padding: 3px 12px;
+            border-radius: 20px;
+            margin-top: 6px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .roadmap-container {
+            width: 100%;
+            background: rgba(30, 39, 56, 0.75);
+            border: 2px solid rgba(251, 192, 45, 0.4);
+            border-radius: 12px;
+            padding: 12px;
+            margin: 10px 0;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .roadmap-header {
+            font-size: 12px;
+            color: #81c784;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 10px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .level-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .level-card {
+            background: #182030;
+            border: 1.5px solid #2e3c54;
+            border-radius: 8px;
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .level-card.active-target {
+            border-color: var(--arcade-gold);
+            background: rgba(251, 192, 45, 0.08);
+        }
+
+        .card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .level-num {
+            font-size: 10px;
+            color: #90a4ae;
+            font-weight: bold;
+        }
+
+        .level-icon {
+            font-size: 14px;
+        }
+
+        .level-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .level-detail {
+            font-size: 10px;
+            color: #b0bec5;
+            line-height: 1.2;
+        }
+
+        .action-area {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            margin-top: 5px;
+        }
+
+        .btn-play {
+            width: 100%;
+            max-width: 280px;
+            padding: 14px 20px;
+            font-size: 20px;
+            font-weight: 900;
+            color: #ffffff;
+            background: linear-gradient(180deg, #ff9800 0%, #e65100 100%);
+            border: none;
+            border-radius: 50px;
+            box-shadow: 0 6px 0 #b23c00, 0 10px 20px rgba(230, 81, 0, 0.4);
+            cursor: pointer;
+            position: relative;
+            transition: all 0.1s ease;
+            text-shadow: 2px 2px 0 #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            letter-spacing: 1px;
+            animation: pulseGlow 1.8s infinite alternate;
+        }
+
+        @keyframes pulseGlow {
+            0% { transform: scale(1); box-shadow: 0 6px 0 #b23c00, 0 10px 20px rgba(230, 81, 0, 0.4); }
+            100% { transform: scale(1.03); box-shadow: 0 6px 0 #b23c00, 0 14px 28px rgba(255, 152, 0, 0.6); }
+        }
+
+        .btn-play:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #b23c00, 0 4px 10px rgba(230, 81, 0, 0.4);
+        }
+
+        /* Sound Toggle and Extras */
+        .controls-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 0 8px;
+        }
+
+        .audio-btn {
+            background: #263238;
+            border: 1px solid #455a64;
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .audio-btn:hover {
+            background: #37474f;
+        }
+
+        .trophy-badges {
+            display: flex;
+            gap: 8px;
+        }
+
+        .badge-pill {
+            font-size: 11px;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 4px 8px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #cfd8dc;
+        }
+
+        .score-board {
+            background: rgba(24, 32, 48, 0.95);
+            border: 3px solid var(--arcade-gold);
+            border-radius: 14px;
+            padding: 16px;
+            width: 100%;
+            max-width: 320px;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            margin: 10px 0;
+        }
+
+        .score-title {
+            font-size: 12px;
+            color: #90a4ae;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .score-main {
+            font-size: 44px;
+            font-weight: 900;
+            color: #ffee55;
+            text-shadow: 2px 2px 0 #000;
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-around;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #b0bec5;
+        }
+
+        .stat-val {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .medal-icon {
+            font-size: 28px;
+            margin-top: 6px;
+        }
+
+        /* In-Game Dynamic Banner */
+        #level-up-toast {
+            position: absolute;
+            top: 18%;
+            left: 50%;
+            transform: translateX(-50%) scale(0.7);
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid var(--arcade-gold);
+            color: #ffffff;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 900;
+            text-align: center;
+            pointer-events: none;
+            z-index: 25;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+            white-space: nowrap;
+        }
+
+        #level-up-toast.active {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+        }
+
+        /* Touch helper prompt */
+        .touch-hint {
+            font-size: 11px;
+            color: #78909c;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-wrapper">
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+
+        <!-- Level Up Notification Banner -->
+        <div id="level-up-toast">
+            <span id="toast-title">LEVEL UP!</span>
+        </div>
+
+        <!-- Start Screen Overlay -->
+        <div id="start-screen" class="overlay">
+            <div class="header-brand">
+                <!-- SVG Animated Mascot -->
+                <div class="mascot-container">
+                    <svg viewBox="0 0 40 40" width="100%" height="100%">
+                        <circle cx="20" cy="20" r="16" fill="#ffea00" stroke="#000" stroke-width="2"/>
+                        <circle cx="28" cy="14" r="5" fill="#fff" stroke="#000" stroke-width="1.5"/>
+                        <circle cx="29" cy="14" r="2" fill="#000"/>
+                        <path d="M 30 20 Q 38 22 30 28 Z" fill="#ff6600" stroke="#000" stroke-width="1.5"/>
+                        <ellipse cx="14" cy="22" rx="7" ry="4" fill="#f7b731" stroke="#000" stroke-width="1.5"/>
+                    </svg>
+                </div>
+                <h1 class="game-title">FLAPPY BIRD</h1>
+                <div class="badge-tag">
+                    <i class="fa-solid fa-gamepad"></i> ARCADE LEVEL EDITION
+                </div>
+            </div>
+
+            <!-- Interactive Level Roadmap -->
+            <div class="roadmap-container">
+                <div class="roadmap-header">
+                    <i class="fa-solid fa-trophy"></i> 4 STAGE PROGRESSION MAP
+                </div>
+                <div class="level-grid">
+                    <div class="level-card active-target">
+                        <div class="card-top">
+                            <span class="level-num">STAGE 1</span>
+                            <span class="level-icon">☀️</span>
+                        </div>
+                        <div class="level-title">Sunny Day</div>
+                        <div class="level-detail">0-9 PTS • Normal Gap</div>
+                    </div>
+
+                    <div class="level-card">
+                        <div class="card-top">
+                            <span class="level-num">STAGE 2</span>
+                            <span class="level-icon">🌅</span>
+                        </div>
+                        <div class="level-title">Sunset Cruise</div>
+                        <div class="level-detail">10-24 PTS • +20% Speed</div>
+                    </div>
+
+                    <div class="level-card">
+                        <div class="card-top">
+                            <span class="level-num">STAGE 3</span>
+                            <span class="level-icon">🌙</span>
+                        </div>
+                        <div class="level-title">Night Raid</div>
+                        <div class="level-detail">25-49 PTS • Tight Gap</div>
+                    </div>
+
+                    <div class="level-card">
+                        <div class="card-top">
+                            <span class="level-num">STAGE 4</span>
+                            <span class="level-icon">⚡</span>
+                        </div>
+                        <div class="level-title">Eclipse Storm</div>
+                        <div class="level-detail">50+ PTS • Moving Pipes</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Start Controls -->
+            <div class="action-area">
+                <button class="btn-play" id="start-btn">
+                    <i class="fa-solid fa-play"></i> START GAME
+                </button>
+                <div class="touch-hint">Tap Screen or Press Spacebar to Jump</div>
+
+                <div class="controls-bar">
+                    <button class="audio-btn" id="sound-toggle">
+                        <i class="fa-solid fa-volume-high" id="sound-icon"></i>
+                        <span id="sound-text">SOUND ON</span>
+                    </button>
+                    <div class="trophy-badges">
+                        <div class="badge-pill" title="Highest Level Reached">
+                            <i class="fa-solid fa-crown" style="color: #ffd700;"></i>
+                            <span id="menu-best">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Over Screen Overlay -->
+        <div id="game-over-screen" class="overlay hidden">
+            <div class="header-brand">
+                <h1 class="game-title" style="color: #ff5252; text-shadow: 3px 3px 0 #880e4f;">GAME OVER</h1>
+                <div class="badge-tag" style="background: #37474f;">
+                    <i class="fa-solid fa-skull"></i> TRY AGAIN!
+                </div>
+            </div>
+
+            <div class="score-board">
+                <div class="score-title">TOTAL SCORE</div>
+                <div class="score-main" id="final-score">0</div>
+
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <span class="stat-label">BEST SCORE</span>
+                        <span class="stat-val" id="best-score" style="color: #55ff55;">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">MAX STAGE</span>
+                        <span class="stat-val" id="reached-stage" style="color: #ffd700;">L1</span>
+                    </div>
+                </div>
+
+                <div id="medal-container">
+                    <!-- Dynamic Medal Emoji or Icon -->
+                </div>
+            </div>
+
+            <div class="action-area">
+                <button class="btn-play" id="restart-btn">
+                    <i class="fa-solid fa-rotate-right"></i> PLAY AGAIN
+                </button>
+                <div class="touch-hint">Tap Screen or Press Spacebar to Restart</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let soundEnabled = true;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'flap') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(350, now);
+                osc.frequency.exponentialRampToValueAtTime(750, now + 0.08);
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } else if (type === 'score') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.07); // E5
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+                osc.start(now);
+                osc.stop(now + 0.18);
+            } else if (type === 'hit') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(160, now);
+                osc.frequency.linearRampToValueAtTime(40, now + 0.25);
+                gain.gain.setValueAtTime(0.35, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'levelup') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.25);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            }
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let gameState = 'START'; // START, COUNTDOWN, PLAYING, GAMEOVER
+        let score = 0;
+        let highScore = parseInt(localStorage.getItem('flappy_arcade_best') || '0', 10);
+        let currentLevel = 1;
+        let screenShakeTime = 0;
+
+        // Stage Configurations
+        const stageConfigs = {
+            1: { name: "Sunny Day", icon: "☀️", bg: "#70c5ce", pipeGap: 145, speed: 2.2, gravity: 0.38, jump: -6.8, oscillating: false },
+            2: { name: "Sunset Cruise", icon: "🌅", bg: "#e27d60", pipeGap: 138, speed: 2.6, gravity: 0.42, jump: -7.2, oscillating: false },
+            3: { name: "Night Raid", icon: "🌙", bg: "#1f1c2c", pipeGap: 130, speed: 3.0, gravity: 0.45, jump: -7.5, oscillating: false },
+            4: { name: "Eclipse Storm", icon: "⚡", bg: "#3a0607", pipeGap: 122, speed: 3.4, gravity: 0.48, jump: -7.8, oscillating: true }
+        };
+
+        // Update high score display on main menu
+        document.getElementById('menu-best').innerText = highScore;
+
+        let particles = [];
+
+        function createParticles(x, y, color, count = 8) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 4,
+                    radius: Math.random() * 3 + 2,
+                    color: color,
+                    alpha: 1,
+                    life: 0.04
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= p.life;
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, p.alpha);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        // Bird Object definition
+        const bird = {
+            x: 80,
+            y: 280,
+            radius: 13,
+            velocity: 0,
+            wingAngle: 0,
+
+            reset() {
+                this.y = 280;
+                this.velocity = 0;
+            },
+
+            update(cfg) {
+                this.velocity += cfg.gravity;
+                this.y += this.velocity;
+                this.wingAngle += 0.25;
+            },
+
+            flap(cfg) {
+                this.velocity = cfg.jump;
+                playSound('flap');
+                createParticles(this.x - 5, this.y + 5, '#ffffff', 5);
+            },
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                let rotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, this.velocity * 0.08));
+                ctx.rotate(rotation);
+
+                // Body
+                ctx.fillStyle = '#ffea00';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#000';
+                ctx.stroke();
+
+                // Eye
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(6, -5, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Pupil
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(8, -5, 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Beak
+                ctx.fillStyle = '#ff6600';
+                ctx.beginPath();
+                ctx.moveTo(8, 1);
+                ctx.lineTo(17, 4);
+                ctx.lineTo(8, 8);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Flapping Wing
+                let wingY = Math.sin(this.wingAngle) * 5;
+                ctx.fillStyle = '#f7b731';
+                ctx.beginPath();
+                ctx.ellipse(-4, 2 + wingY, 6, 4, Math.PI / 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        };
+
+        let pipes = [];
+        let pipeTimer = 0;
+
+        function spawnPipe(cfg) {
+            let minTop = 50;
+            let maxTop = canvas.height - 120 - cfg.pipeGap - minTop;
+            let topHeight = Math.floor(Math.random() * (maxTop - minTop + 1)) + minTop;
+
+            pipes.push({
+                x: canvas.width,
+                top: topHeight,
+                bottom: canvas.height - 120 - topHeight - cfg.pipeGap,
+                passed: false,
+                offsetY: 0,
+                direction: Math.random() > 0.5 ? 1 : -1
+            });
+        }
+
+        let countdownVal = 3;
+        let countdownTimer = null;
+
+        function startCountdown() {
+            playSound('click');
+            gameState = 'COUNTDOWN';
+            countdownVal = 3;
+            document.getElementById('start-screen').classList.add('hidden');
+
+            countdownTimer = setInterval(() => {
+                countdownVal--;
+                if (countdownVal > 0) {
+                    playSound('click');
+                } else if (countdownVal === 0) {
+                    playSound('click');
+                } else {
+                    clearInterval(countdownTimer);
+                    gameState = 'PLAYING';
+                    bird.flap(stageConfigs[currentLevel]);
+                }
+            }, 650);
+        }
+
+        function checkLevelProgression() {
+            let oldLevel = currentLevel;
+            if (score >= 50) currentLevel = 4;
+            else if (score >= 25) currentLevel = 3;
+            else if (score >= 10) currentLevel = 2;
+            else currentLevel = 1;
+
+            if (currentLevel !== oldLevel) {
+                playSound('levelup');
+                screenShakeTime = 10;
+                let toast = document.getElementById('level-up-toast');
+                let title = document.getElementById('toast-title');
+                title.innerText = `STAGE ${currentLevel}: ${stageConfigs[currentLevel].name.toUpperCase()}! ${stageConfigs[currentLevel].icon}`;
+                toast.classList.add('active');
+                setTimeout(() => toast.classList.remove('active'), 1800);
+            }
+        }
+
+        function triggerFlap() {
+            if (gameState === 'START') {
+                startCountdown();
+            } else if (gameState === 'PLAYING') {
+                bird.flap(stageConfigs[currentLevel]);
+            } else if (gameState === 'GAMEOVER') {
+                restartGame();
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                triggerFlap();
+            }
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            triggerFlap();
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            triggerFlap();
+        });
+
+        document.getElementById('start-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            startCountdown();
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            restartGame();
+        });
+
+        const soundBtn = document.getElementById('sound-toggle');
+        soundBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            soundEnabled = !soundEnabled;
+            document.getElementById('sound-icon').className = soundEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
+            document.getElementById('sound-text').innerText = soundEnabled ? 'SOUND ON' : 'MUTED';
+            playSound('click');
+        });
+
+        function restartGame() {
+            playSound('click');
+            score = 0;
+            currentLevel = 1;
+            pipes = [];
+            particles = [];
+            pipeTimer = 0;
+            bird.reset();
+            document.getElementById('game-over-screen').classList.add('hidden');
+            startCountdown();
+        }
+
+        let groundX = 0;
+
+        function gameLoop() {
+            let cfg = stageConfigs[currentLevel];
+
+            ctx.save();
+
+            // Screen Shake Effect
+            if (screenShakeTime > 0) {
+                let dx = (Math.random() - 0.5) * 6;
+                let dy = (Math.random() - 0.5) * 6;
+                ctx.translate(dx, dy);
+                screenShakeTime--;
+            }
+
+            // 1. Render Background Sky
+            ctx.fillStyle = cfg.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Cloud Graphics
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+            ctx.beginPath();
+            ctx.arc(70, 90, 25, 0, Math.PI * 2);
+            ctx.arc(100, 80, 35, 0, Math.PI * 2);
+            ctx.arc(130, 90, 25, 0, Math.PI * 2);
+            ctx.arc(310, 140, 30, 0, Math.PI * 2);
+            ctx.arc(340, 130, 40, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 2. State Specific Logic
+            if (gameState === 'START' || gameState === 'COUNTDOWN') {
+                bird.y = 280 + Math.sin(Date.now() * 0.005) * 8;
+                bird.wingAngle += 0.1;
+                bird.draw();
+
+                if (gameState === 'COUNTDOWN') {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 4;
+                    ctx.font = '900 48px Arial Rounded MT Bold';
+                    ctx.textAlign = 'center';
+                    let text = countdownVal > 0 ? countdownVal : "GO!";
+                    ctx.strokeText(text, canvas.width / 2, canvas.height / 2);
+                    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+                }
+            }
+
+            if (gameState === 'PLAYING') {
+                bird.update(cfg);
+                bird.draw();
+
+                // Pipe Spawning
+                pipeTimer++;
+                if (pipeTimer > Math.floor(105 / (cfg.speed / 2))) {
+                    spawnPipe(cfg);
+                    pipeTimer = 0;
+                }
+
+                // Update & Render Pipes
+                for (let i = pipes.length - 1; i >= 0; i--) {
+                    let p = pipes[i];
+                    p.x -= cfg.speed;
+
+                    // Oscillating Motion for Stage 4
+                    if (cfg.oscillating) {
+                        p.offsetY += p.direction * 0.8;
+                        if (Math.abs(p.offsetY) > 25) {
+                            p.direction *= -1;
+                        }
+                    }
+
+                    let topPipeHeight = p.top + p.offsetY;
+                    let bottomPipeY = canvas.height - 120 - p.bottom + p.offsetY;
+
+                    // Draw Top & Bottom Pipes
+                    ctx.fillStyle = '#73bf2e';
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+
+                    // Top Pipe
+                    ctx.fillRect(p.x, 0, 50, topPipeHeight);
+                    ctx.strokeRect(p.x, 0, 50, topPipeHeight);
+                    // Top Rim
+                    ctx.fillRect(p.x - 3, topPipeHeight - 18, 56, 18);
+                    ctx.strokeRect(p.x - 3, topPipeHeight - 18, 56, 18);
+
+                    // Bottom Pipe
+                    ctx.fillRect(p.x, bottomPipeY, 50, canvas.height - 120 - bottomPipeY);
+                    ctx.strokeRect(p.x, bottomPipeY, 50, canvas.height - 120 - bottomPipeY);
+                    // Bottom Rim
+                    ctx.fillRect(p.x - 3, bottomPipeY, 56, 18);
+                    ctx.strokeRect(p.x - 3, bottomPipeY, 56, 18);
+
+                    // Score calculation
+                    if (!p.passed && p.x + 50 < bird.x) {
+                        p.passed = true;
+                        score++;
+                        playSound('score');
+                        createParticles(bird.x, bird.y, '#ffd700', 8);
+                        checkLevelProgression();
+                    }
+
+                    // Collision Bounds
+                    let inPipeX = bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + 50;
+                    let hitTop = bird.y - bird.radius < topPipeHeight;
+                    let hitBottom = bird.y + bird.radius > bottomPipeY;
+
+                    if (inPipeX && (hitTop || hitBottom)) {
+                        triggerGameOver();
+                    }
+
+                    // Clean up offscreen pipes
+                    if (p.x < -60) pipes.splice(i, 1);
+                }
+
+                // Ground & Ceiling Collisions
+                if (bird.y - bird.radius <= 0 || bird.y + bird.radius >= canvas.height - 120) {
+                    triggerGameOver();
+                }
+            }
+
+            // Particles Rendering
+            updateParticles();
+            drawParticles();
+
+            // 3. Render Ground
+            groundX = (groundX - cfg.speed) % 20;
+            ctx.fillStyle = '#ded895';
+            ctx.fillRect(0, canvas.height - 120, canvas.width, 120);
+            ctx.fillStyle = '#73bf2e';
+            ctx.fillRect(0, canvas.height - 120, canvas.width, 14);
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height - 120);
+            ctx.lineTo(canvas.width, canvas.height - 120);
+            ctx.stroke();
+
+            // Ground pattern details
+            ctx.fillStyle = '#c8be7a';
+            for (let x = groundX; x < canvas.width; x += 20) {
+                ctx.beginPath();
+                ctx.moveTo(x, canvas.height - 106);
+                ctx.lineTo(x + 10, canvas.height - 106);
+                ctx.lineTo(x + 5, canvas.height);
+                ctx.lineTo(x - 5, canvas.height);
+                ctx.fill();
+            }
+
+            // 4. Draw In-Game Score HUD
+            if (gameState === 'PLAYING' || gameState === 'COUNTDOWN') {
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 4;
+                ctx.font = '900 34px Arial Rounded MT Bold';
+                ctx.textAlign = 'center';
+                ctx.strokeText(score, canvas.width / 2, 45);
+                ctx.fillText(score, canvas.width / 2, 45);
+
+                ctx.font = 'bold 12px Arial Rounded MT Bold';
+                ctx.fillStyle = '#ffd700';
+                ctx.strokeText(`STAGE ${currentLevel} • ${cfg.name.toUpperCase()}`, canvas.width / 2, 68);
+                ctx.fillText(`STAGE ${currentLevel} • ${cfg.name.toUpperCase()}`, canvas.width / 2, 68);
+            }
+
+            ctx.restore();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function triggerGameOver() {
+            gameState = 'GAMEOVER';
+            playSound('hit');
+            screenShakeTime = 12;
+
+            createParticles(bird.x, bird.y, '#e53935', 15);
+
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('flappy_arcade_best', highScore.toString());
+            }
+
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('best-score').innerText = highScore;
+            document.getElementById('menu-best').innerText = highScore;
+            document.getElementById('reached-stage').innerText = `L${currentLevel} (${stageConfigs[currentLevel].icon})`;
+
+            // Medal indicator
+            let medalContainer = document.getElementById('medal-container');
+            if (score >= 40) {
+                medalContainer.innerHTML = '<div class="medal-icon">🥇</div><div style="font-size:10px; color:#ffd700;">GOLD MEDAL</div>';
+            } else if (score >= 20) {
+                medalContainer.innerHTML = '<div class="medal-icon">🥈</div><div style="font-size:10px; color:#c0c0c0;">SILVER MEDAL</div>';
+            } else if (score >= 10) {
+                medalContainer.innerHTML = '<div class="medal-icon">🥉</div><div style="font-size:10px; color:#cd7f32;">BRONZE MEDAL</div>';
+            } else {
+                medalContainer.innerHTML = '';
+            }
+
+            document.getElementById('game-over-screen').classList.remove('hidden');
+        }
+
+        // Start Canvas Engine Loop
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
